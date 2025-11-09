@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
@@ -6,6 +7,7 @@ puppeteer.use(StealthPlugin());
 const app = express();
 const PORT = 3001;
 
+app.use(cors());
 app.use(express.json());
 
 // Health check endpoint
