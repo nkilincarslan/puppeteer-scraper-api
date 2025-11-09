@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const cheerio = require('cheerio');
+const fs = require('fs');
 
 const app = express();
 const PORT = 3001;
@@ -51,8 +52,13 @@ app.post('/scrape/trendyol', async (req, res) => {
     const html = await response.text();
     console.log(`Received HTML (${html.length} characters)`);
 
+    // Debug: Save HTML to file
+    fs.writeFileSync('/tmp/scraperapi_response.html', html);
+    console.log('✅ HTML saved to /tmp/scraperapi_response.html');
+
     // Parse with Cheerio
     const $ = cheerio.load(html);
+    console.log('Product cards found:', $('.product-card').length);
     const products = [];
 
     // Extract product data
