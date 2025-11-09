@@ -39,8 +39,8 @@ app.post('/scrape/trendyol', async (req, res) => {
     const trendyolUrl = `https://www.trendyol.com/sr?q=${encodeURIComponent(query)}`;
     console.log(`Target URL: ${trendyolUrl}`);
 
-    // ScraperAPI URL with premium mode and wait for selector
-    const scraperUrl = `https://api.scraperapi.com/?api_key=${SCRAPERAPI_KEY}&url=${encodeURIComponent(trendyolUrl)}&render=true&wait_for_selector=.product-card&premium=true`;
+    // ScraperAPI URL with premium mode
+    const scraperUrl = `https://api.scraperapi.com/?api_key=${SCRAPERAPI_KEY}&url=${encodeURIComponent(trendyolUrl)}&render=true&premium=true`;
 
     console.log('Fetching from ScraperAPI...');
     const response = await fetch(scraperUrl);
