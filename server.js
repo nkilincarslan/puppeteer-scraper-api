@@ -79,15 +79,18 @@ app.post('/scrape/trendyol', async (req, res) => {
       window.scrollBy(0, window.innerHeight * 2);
     });
 
-    // Wait for real images (not placeholder)
-    await page.waitForFunction(() => {
-      const images = Array.from(document.querySelectorAll('img.image'));
-      return images.some(img =>
-        img.src &&
-        !img.src.includes('placeholder') &&
-        img.src.includes('cdn.dsmcdn.com')
-      );
-    }, { timeout: 10000 });
+    // Try to wait for real images, but continue if timeout
+    try {
+      await page.waitForFunction(() => {
+        const images = Array.from(document.querySelectorAll('img.image'));
+        return images.some(img =>
+          img.src &&
+          !img.src.includes('placeholder')
+        );
+      }, { timeout: 10000 });
+    } catch (error) {
+      console.log('Timeout waiting for real images, using current state');
+    }
 
     await page.waitForTimeout(1000);
 
