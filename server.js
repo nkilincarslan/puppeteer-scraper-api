@@ -81,25 +81,24 @@ app.post('/scrape/trendyol', async (req, res) => {
         const product = productElements[i];
 
         try {
-          const nameElement = product.querySelector('.prdct-desc-cntnr-name, .product-name');
-          const priceElement = product.querySelector('.prc-box-dscntd, .price-value');
+          const nameElement = product.querySelector('.product-name');
+          const brandElement = product.querySelector('.product-brand');
+          const priceElement = product.querySelector('.price-section');
+          const imageElement = product.querySelector('img.image');
           const linkElement = product.querySelector('a');
-          const brandElement = product.querySelector('.prdct-desc-cntnr-ttl, .product-brand');
-          const ratingElement = product.querySelector('.ratings-container .rating-score');
 
           const name = nameElement?.textContent?.trim() || '';
-          const price = priceElement?.textContent?.trim() || '';
-          const link = linkElement?.href || '';
           const brand = brandElement?.textContent?.trim() || '';
-          const rating = ratingElement?.textContent?.trim() || '';
+          const price = priceElement?.textContent?.trim() || '';
+          const image = imageElement?.src || '';
+          const url = linkElement?.href || product.href || '';
 
-          if (name && link) {
+          if (name && url) {
             results.push({
-              name,
-              brand,
-              price,
-              rating,
-              url: link
+              name: `${brand} ${name}`,
+              price: { current: price },
+              url: url,
+              image: image
             });
           }
         } catch (error) {
