@@ -70,11 +70,11 @@ app.post('/scrape/trendyol', async (req, res) => {
     });
 
     // Wait for products to load
-    await page.waitForSelector('.p-card-wrppr', { timeout: 10000 });
+    await page.waitForSelector('.product-card', { timeout: 10000 });
 
     // Extract product data
     const products = await page.evaluate((maxProducts) => {
-      const productElements = document.querySelectorAll('.p-card-wrppr');
+      const productElements = document.querySelectorAll('.product-card');
       const results = [];
 
       for (let i = 0; i < Math.min(productElements.length, maxProducts); i++) {
