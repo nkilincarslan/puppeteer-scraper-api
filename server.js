@@ -8,6 +8,10 @@ const PORT = 3001;
 // ScraperAPI key
 const SCRAPERAPI_KEY = '3597374f16e523476e267bf66afc2503';
 
+console.log('Starting server...');
+console.log('SCRAPERAPI_KEY:', process.env.SCRAPERAPI_KEY ? 'Found' : 'Missing');
+console.log('PORT:', process.env.PORT);
+
 app.use(cors());
 app.use(express.json());
 
