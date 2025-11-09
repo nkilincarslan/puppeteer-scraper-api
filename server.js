@@ -1,11 +1,12 @@
 const express = require('express');
 const cors = require('cors');
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+const cheerio = require('cheerio');
 
 const app = express();
 const PORT = 3001;
+
+// ScraperAPI key
+const SCRAPERAPI_KEY = '3597374f16e523476e267bf66afc2503';
 
 app.use(cors());
 app.use(express.json());
@@ -26,128 +27,73 @@ app.post('/scrape/trendyol', async (req, res) => {
     });
   }
 
-  let browser;
   try {
     console.log(`Starting scrape for query: "${query}" with limit: ${limit}`);
 
-    // Launch browser with optimized settings
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
-        '--window-size=1920x1080',
-        '--disable-blink-features=AutomationControlled'
-      ]
-    });
+    // Trendyol search URL
+    const trendyolUrl = `https://www.trendyol.com/sr?q=${encodeURIComponent(query)}`;
+    console.log(`Target URL: ${trendyolUrl}`);
 
-    const page = await browser.newPage();
+    // ScraperAPI URL with premium mode and wait for selector
+    const scraperUrl = `https://api.scraperapi.com/?api_key=${SCRAPERAPI_KEY}&url=${encodeURIComponent(trendyolUrl)}&render=true&wait_for_selector=.product-card&premium=true`;
 
-    // Block images and CSS for faster loading
-    await page.setRequestInterception(true);
-    page.on('request', (request) => {
-      const resourceType = request.resourceType();
-      if (resourceType === 'image' || resourceType === 'stylesheet' || resourceType === 'font') {
-        request.abort();
-      } else {
-        request.continue();
-      }
-    });
+    console.log('Fetching from ScraperAPI...');
+    const response = await fetch(scraperUrl);
 
-    // Set user agent to avoid detection
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    );
-
-    // Navigate to Trendyol search page
-    const searchUrl = `https://www.trendyol.com/sr?q=${encodeURIComponent(query)}`;
-    console.log(`Navigating to: ${searchUrl}`);
-
-    await page.goto(searchUrl, {
-      waitUntil: 'domcontentloaded',
-      timeout: 60000
-    });
-
-    // Wait for products to load
-    await page.waitForSelector('.product-card', { timeout: 10000 });
-
-    // Scroll to trigger lazy loading
-    await page.evaluate(() => {
-      window.scrollBy(0, window.innerHeight * 2);
-    });
-
-    // Try to wait for real images, but continue if timeout
-    try {
-      await page.waitForFunction(() => {
-        const images = Array.from(document.querySelectorAll('img.image'));
-        return images.some(img =>
-          img.src &&
-          !img.src.includes('placeholder')
-        );
-      }, { timeout: 10000 });
-    } catch (error) {
-      console.log('Timeout waiting for real images, using current state');
+    if (!response.ok) {
+      throw new Error(`ScraperAPI returned ${response.status}: ${response.statusText}`);
     }
 
-    await page.waitForTimeout(1000);
+    const html = await response.text();
+    console.log(`Received HTML (${html.length} characters)`);
+
+    // Parse with Cheerio
+    const $ = cheerio.load(html);
+    const products = [];
 
     // Extract product data
-    const products = await page.evaluate((maxProducts) => {
-      const productElements = document.querySelectorAll('.product-card');
-      const results = [];
+    $('.product-card').each((i, element) => {
+      if (i >= limit) return false; // Stop after limit
 
-      for (let i = 0; i < Math.min(productElements.length, maxProducts); i++) {
-        const product = productElements[i];
+      try {
+        const $product = $(element);
 
-        try {
-          const nameElement = product.querySelector('.product-name');
-          const brandElement = product.querySelector('.product-brand');
-          const priceElement = product.querySelector('.price-section');
-          const linkElement = product.querySelector('a');
+        const name = $product.find('.product-name').text().trim();
+        const brand = $product.find('.product-brand').text().trim();
+        const price = $product.find('.price-section').text().trim();
+        const url = $product.find('a').attr('href') || '';
 
-          const name = nameElement?.textContent?.trim() || '';
-          const brand = brandElement?.textContent?.trim() || '';
-          const price = priceElement?.textContent?.trim() || '';
-          const url = linkElement?.href || product.href || '';
-
-          // Get all images in product card
-          const images = product.querySelectorAll('img.image, img.image.with-actions');
-          let image = '';
-
-          // Try to find a real image (not placeholder)
-          for (let j = 0; j < images.length; j++) {
-            const img = images[j];
-            if (img.src && !img.src.includes('placeholder')) {
-              image = img.src;
-              break;
-            }
+        // Get image - try multiple selectors
+        let image = '';
+        const $images = $product.find('img.image, img.image.with-actions');
+        $images.each((j, img) => {
+          const src = $(img).attr('src');
+          if (src && !src.includes('placeholder') && !image) {
+            image = src;
+            return false; // Break loop
           }
+        });
 
-          // Fallback to first image if no real image found
-          if (!image && images.length > 0) {
-            image = images[0].src || '';
-          }
-
-          if (name && url) {
-            results.push({
-              name: `${brand} ${name}`,
-              price: { current: price },
-              url: url,
-              image: image
-            });
-          }
-        } catch (error) {
-          console.error('Error extracting product data:', error);
+        // Fallback to first image
+        if (!image && $images.length > 0) {
+          image = $images.first().attr('src') || '';
         }
+
+        // Add full URL if relative
+        const fullUrl = url.startsWith('http') ? url : `https://www.trendyol.com${url}`;
+
+        if (name && url) {
+          products.push({
+            name: `${brand} ${name}`.trim(),
+            price: { current: price },
+            url: fullUrl,
+            image: image
+          });
+        }
+      } catch (error) {
+        console.error('Error extracting product data:', error);
       }
-
-      return results;
-    }, limit);
-
-    await browser.close();
+    });
 
     console.log(`Successfully scraped ${products.length} products`);
 
@@ -160,10 +106,6 @@ app.post('/scrape/trendyol', async (req, res) => {
 
   } catch (error) {
     console.error('Scraping error:', error);
-
-    if (browser) {
-      await browser.close();
-    }
 
     res.status(500).json({
       success: false,
