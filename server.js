@@ -66,45 +66,32 @@ app.post('/scrape/trendyol', async (req, res) => {
       if (i >= limit) return false; // Stop after limit
 
       try {
-        const $product = $(element);
+        const name = $(element).find('.prdct-desc-cntnr-name').text().trim();
+        console.log(`✅ Product ${i} name:`, name);
 
-        const name = $product.find('.product-name').text().trim();
-        const brand = $product.find('.product-brand').text().trim();
-        const price = $product.find('.price-section').text().trim();
-        const url = $product.find('a').attr('href') || '';
+        const priceElement = $(element).find('.prc-box-dscntd');
+        console.log(`  Price element found:`, priceElement.length);
+        const price = priceElement.text().trim();
+        console.log(`  Price:`, price);
 
-        // Get image - try multiple selectors
-        let image = '';
-        const $images = $product.find('img.image, img.image.with-actions');
-        $images.each((j, img) => {
-          const src = $(img).attr('src');
-          if (src && !src.includes('placeholder') && !image) {
-            image = src;
-            return false; // Break loop
-          }
-        });
+        const imageElement = $(element).find('img');
+        console.log(`  Image element found:`, imageElement.length);
+        const image = imageElement.attr('src');
+        console.log(`  Image:`, image);
 
-        // Fallback to first image
-        if (!image && $images.length > 0) {
-          image = $images.first().attr('src') || '';
-        }
+        const urlElement = $(element).find('a');
+        console.log(`  URL element found:`, urlElement.length);
+        const url = 'https://www.trendyol.com' + urlElement.attr('href');
+        console.log(`  URL:`, url);
 
-        // Add full URL if relative
-        const fullUrl = url.startsWith('http') ? url : `https://www.trendyol.com${url}`;
-
-        console.log(`Product ${i}: ${brand} ${name}`);
-
-        if (name && url) {
-          products.push({
-            name: `${brand} ${name}`.trim(),
-            price: { current: price },
-            url: fullUrl,
-            image: image
-          });
+        if (name && price && image && url) {
+          products.push({ name, price, image, url });
+          console.log(`✅ Product ${i} SUCCESSFULLY ADDED`);
+        } else {
+          console.log(`❌ Product ${i} MISSING FIELDS`);
         }
       } catch (error) {
         console.error(`❌ Parse error for product ${i}:`, error.message);
-        console.error('Element HTML:', $(element).html().substring(0, 200));
       }
     });
 
