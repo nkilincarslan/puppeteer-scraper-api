@@ -74,11 +74,21 @@ app.post('/scrape/trendyol', async (req, res) => {
     // Wait for products to load
     await page.waitForSelector('.product-card', { timeout: 10000 });
 
-    // Wait for lazy loaded images
-    await page.waitForTimeout(2000);
+    // Scroll to trigger lazy loading
     await page.evaluate(() => {
-      window.scrollBy(0, window.innerHeight);
+      window.scrollBy(0, window.innerHeight * 2);
     });
+
+    // Wait for real images (not placeholder)
+    await page.waitForFunction(() => {
+      const images = Array.from(document.querySelectorAll('img.image'));
+      return images.some(img =>
+        img.src &&
+        !img.src.includes('placeholder') &&
+        img.src.includes('cdn.dsmcdn.com')
+      );
+    }, { timeout: 10000 });
+
     await page.waitForTimeout(1000);
 
     // Extract product data
