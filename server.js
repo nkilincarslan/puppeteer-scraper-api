@@ -92,6 +92,8 @@ app.post('/scrape/trendyol', async (req, res) => {
         // Add full URL if relative
         const fullUrl = url.startsWith('http') ? url : `https://www.trendyol.com${url}`;
 
+        console.log(`Product ${i}: ${brand} ${name}`);
+
         if (name && url) {
           products.push({
             name: `${brand} ${name}`.trim(),
@@ -101,7 +103,8 @@ app.post('/scrape/trendyol', async (req, res) => {
           });
         }
       } catch (error) {
-        console.error('Error extracting product data:', error);
+        console.error(`❌ Parse error for product ${i}:`, error.message);
+        console.error('Element HTML:', $(element).html().substring(0, 200));
       }
     });
 
