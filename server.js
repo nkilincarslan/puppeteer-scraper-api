@@ -74,6 +74,13 @@ app.post('/scrape/trendyol', async (req, res) => {
     // Wait for products to load
     await page.waitForSelector('.product-card', { timeout: 10000 });
 
+    // Wait for lazy loaded images
+    await page.waitForTimeout(2000);
+    await page.evaluate(() => {
+      window.scrollBy(0, window.innerHeight);
+    });
+    await page.waitForTimeout(1000);
+
     // Extract product data
     const products = await page.evaluate((maxProducts) => {
       const productElements = document.querySelectorAll('.product-card');
