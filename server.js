@@ -113,21 +113,22 @@ app.post('/scrape/trendyol', async (req, res) => {
           const price = priceElement?.textContent?.trim() || '';
           const url = linkElement?.href || product.href || '';
 
-          // Get image from active swiper slide
+          // Get all images in product card
+          const images = product.querySelectorAll('img.image, img.image.with-actions');
           let image = '';
-          // Try active slide first
-          const activeSlide = product.querySelector('.swiper-slide-active img.image');
-          if (activeSlide && activeSlide.src && !activeSlide.src.includes('placeholder')) {
-            image = activeSlide.src;
-          } else {
-            // Fallback to any real image
-            const anyImage = product.querySelector('img.image');
-            if (anyImage && anyImage.src && !anyImage.src.includes('placeholder')) {
-              image = anyImage.src;
-            } else if (anyImage) {
-              // Last resort - any image
-              image = anyImage.src;
+
+          // Try to find a real image (not placeholder)
+          for (let j = 0; j < images.length; j++) {
+            const img = images[j];
+            if (img.src && !img.src.includes('placeholder')) {
+              image = img.src;
+              break;
             }
+          }
+
+          // Fallback to first image if no real image found
+          if (!image && images.length > 0) {
+            image = images[0].src || '';
           }
 
           if (name && url) {
